@@ -4,11 +4,17 @@ require_once 'libs/simple_html_dom.php';
 require_once 'src/Logger/Logger.php';
 require_once 'src/Enum/LogLevel.php';
 require_once 'src/Service/UrlLoader.php';
+require_once 'src/Http/HttpClient.php';
+require_once 'src/Parser/HtmlParser.php';
+require_once 'src/Service/Crawler.php';
 
+use WebCrawler\Http\HttpClient;
 use WebCrawler\Logger\Logger;
+use WebCrawler\Parser\HtmlParser;
+use WebCrawler\Service\Crawler;
 use WebCrawler\Service\UrlLoader;
 
-if (php_sapi_name() !== 'cli') {
+if (php_sapi_name() !== "cli") {
     die("This script must be run from the command line\n");
 }
 
@@ -19,7 +25,13 @@ try {
     $urlLoader = new UrlLoader();
     $urls = $urlLoader->loadUrls();
 
-    print_r($urls);
+    $logger->info("Urls loaded");
+
+    $httpClient = new HttpClient($logger);
+    $parser = new HtmlParser($logger);
+
+    $crawler = new Crawler($httpClient, $logger);
+    $crawler->crawl($urls);
 
 
 

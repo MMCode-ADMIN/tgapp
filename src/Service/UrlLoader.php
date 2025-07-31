@@ -8,6 +8,9 @@ class UrlLoader
 {
     const string URLS_FILE = 'urls.txt';
 
+    /**
+     * @return array
+     */
     public function loadUrls(): array
     {
         if (file_exists(self::URLS_FILE)) {

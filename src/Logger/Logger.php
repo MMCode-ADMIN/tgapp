@@ -53,4 +53,13 @@ class Logger
     {
         $this->log($message, LogLevel::ERROR);
     }
+
+    /**
+     * @param string $message
+     * @return void
+     */
+    public function warning(string $message): void
+    {
+        $this->log($message, LogLevel::WARNING);
+    }
 }
