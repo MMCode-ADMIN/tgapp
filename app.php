@@ -4,11 +4,13 @@ require_once 'libs/simple_html_dom.php';
 require_once 'src/Logger/Logger.php';
 require_once 'src/Enum/LogLevel.php';
 require_once 'src/Service/UrlLoader.php';
-require_once 'src/Http/HttpClient.php';
 require_once 'src/Parser/HtmlParser.php';
 require_once 'src/Service/Crawler.php';
+require_once 'src/Model/Money.php';
+require_once 'src/Enum/Currency.php';
+require_once 'src/Utilities/StringDetection.php';
 
-use WebCrawler\Http\HttpClient;
+
 use WebCrawler\Logger\Logger;
 use WebCrawler\Parser\HtmlParser;
 use WebCrawler\Service\Crawler;
@@ -27,10 +29,10 @@ try {
 
     $logger->info("Urls loaded");
 
-    $httpClient = new HttpClient($logger);
+
     $parser = new HtmlParser($logger);
 
-    $crawler = new Crawler($httpClient, $logger);
+    $crawler = new Crawler($logger, $parser);
     $crawler->crawl($urls);
 
 

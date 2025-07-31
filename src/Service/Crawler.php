@@ -3,23 +3,23 @@
 namespace WebCrawler\Service;
 
 use Exception;
-use WebCrawler\Http\HttpClient;
 use WebCrawler\Logger\Logger;
+use WebCrawler\Parser\HtmlParser;
 
 class Crawler
 {
     const int MAX_RETRIES = 1;
     const int RETRY_DELAY = 2;
 
-    private HttpClient $httpClient;
     private Logger $logger;
+    private HtmlParser $parser;
 
     public function __construct(
-        HttpClient $httpClient,
-        Logger $logger
+        Logger $logger,
+        HtmlParser $parser
     ) {
-        $this->httpClient = $httpClient;
         $this->logger = $logger;
+        $this->parser = $parser;
     }
 
     /**
@@ -38,12 +38,17 @@ class Crawler
         $this->logger->info("Crawling completed");
     }
 
+    /**
+     * @param string $url
+     * @param int $attempt
+     * @return void
+     */
     private function processUrl(string $url, int $attempt = 0): void
     {
         try {
-            $html = $this->httpClient->fetch($url);
+            $html = $this->fetchUrlWithPuppeteer($url);
 
-            if ($html === null) {
+            if (!$html) {
                 if ($attempt < self::MAX_RETRIES) {
                     $this->logger->warning("Retrying: $url (attempt " . ($attempt + 2) . ")");
                     sleep(self::RETRY_DELAY);
@@ -52,12 +57,45 @@ class Crawler
                     return;
                 } else {
                     $this->logger->error("Failed to fetch URL after " . (self::MAX_RETRIES + 1) . " attempts: $url");
+
                     return;
                 }
             }
 
+            $productData = $this->parser->parse($html, $url);
         } catch (Exception $e) {
             $this->logger->error("Error processing URL $url: " . $e->getMessage());
         }
+    }
+
+    /**
+     * @param string $url
+     * @return string|null
+     */
+    private function fetchUrlWithPuppeteer(string $url): ?string
+    {
+        $command = sprintf('node scraper.js %s 2>&1', escapeshellarg($url));
+        $output = shell_exec($command);
+
+        if (!$output) {
+            $this->logger->error("Puppeteer returned no output for $url");
+            return null;
+        }
+
+        $result = json_decode($output, true);
+
+        if (!$result || !isset($result['success'])) {
+            $this->logger->error("Invalid Puppeteer response for $url: $output");
+            return null;
+        }
+
+        if (!$result['success']) {
+            $this->logger->error("Puppeteer error for $url: " . ($result['error'] ?? 'Unknown error'));
+            return null;
+        }
+
+        $this->logger->info("Successfully fetched $url with Puppeteer");
+
+        return $result['html'];
     }
 }
