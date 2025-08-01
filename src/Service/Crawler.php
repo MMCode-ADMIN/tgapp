@@ -15,6 +15,7 @@ class Crawler
 
     private Logger $logger;
     private HtmlParser $parser;
+    private DatabaseManager $database;
 
     /**
      * @param Logger $logger
@@ -113,7 +114,7 @@ class Crawler
             $this->database->saveProduct($product);
             $title = $product->getTitle() ?: 'Unknown title';
             $this->logger->info("Saved product to database: $title");
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->logger->error("Failed to save product: " . $e->getMessage());
         }
     }

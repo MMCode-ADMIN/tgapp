@@ -89,6 +89,7 @@ class HtmlParser
     private function extractPrice($dom): ?Money {
         try {
             $priceElement = $dom->find('.product-price .price span', 0);
+
             if (!$priceElement) {
                 $this->logger->warning('Price element not found');
             }
@@ -127,6 +128,8 @@ class HtmlParser
 
         if ($element) {
             $text = trim($element->plaintext);
+            $this->logger->info("Availability: {$this->normalizeAvailability($text)}");
+
             return $this->normalizeAvailability($text);
         }
 

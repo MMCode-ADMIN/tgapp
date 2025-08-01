@@ -25,7 +25,7 @@ class UrlLoader
 
         $logger = new Logger();
         $logger->error("No urls found");
-        echo "No urls found.\n";
+        echo "No urls found!\n";
 
         exit(1);
     }
