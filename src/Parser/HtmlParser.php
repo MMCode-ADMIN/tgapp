@@ -6,13 +6,16 @@ use Exception;
 use simple_html_dom;
 use WebCrawler\Logger\Logger;
 use WebCrawler\Model\Money;
-use WebCrawler\Enum\Currency;
+use WebCrawler\Model\Product;
 use WebCrawler\Utilities\StringDetection;
 
 class HtmlParser
 {
     private Logger $logger;
 
+    /**
+     * @param Logger $logger
+     */
     public function __construct(Logger $logger) {
         $this->logger = $logger;
     }
@@ -20,17 +23,9 @@ class HtmlParser
     /**
      * @param string $html
      * @param string $url
-     * @return array
+     * @return Product|null
      */
-    public function parse(string $html, string $url): array {
-        $data = [
-            'url' => $url,
-            'title' => null,
-            'price' => null,
-            'currency' => null,
-            'availability' => null
-        ];
-
+    public function parse(string $html, string $url): ?Product {
         try {
             $dom = new simple_html_dom();
             $success = $dom->load($html, true, false);
@@ -38,27 +33,36 @@ class HtmlParser
             if (!$success || !$dom) {
                 $this->logger->error("Failed to load DOM for $url");
 
-                return $data;
+                return null;
             }
 
-            $data['title'] = $this->extractTitle($dom);
+            $title = $this->extractTitle($dom);
 
-            if (!$data['title']) {
+            if (!$title) {
                 $this->logger->warning("Missing product title for $url");
             }
 
-            $data = array_merge($data, $this->extractPrice($dom));
-            $data['availability'] = $this->extractAvailability($dom);
+            $money = $this->extractPrice($dom);
+
+            if (!$money) {
+                $this->logger->warning("Missing product price for $url");
+
+                return null;
+            }
+
+            $availability = $this->extractAvailability($dom);
+
+            if (!$availability) {
+                $this->logger->warning("Missing product availability for $url");
+            }
 
             $dom->clear();
-            var_dump($data);
 
-            return $data;
-
+            return new Product($url, $title, $money, $availability);
         } catch (Exception $e) {
             $this->logger->error("DOM parsing error for $url: " . $e->getMessage());
 
-            return $data;
+            return null;
         }
     }
 
@@ -78,14 +82,15 @@ class HtmlParser
         return null;
     }
 
-    private function extractPrice($dom): array {
-        $result = ['price' => null, 'currency' => Currency::EUR->value];
-
+    /**
+     * @param $dom
+     * @return Money|null
+     */
+    private function extractPrice($dom): ?Money {
         try {
             $priceElement = $dom->find('.product-price .price span', 0);
             if (!$priceElement) {
                 $this->logger->warning('Price element not found');
-                return $result;
             }
 
             $priceText = trim(html_entity_decode($priceElement->plaintext));
@@ -96,21 +101,19 @@ class HtmlParser
             if (preg_match('/(\d+\.?\d*)/', $priceText, $matches)) {
                 $amount = floatval($matches[1]);
                 $money = Money::fromFloat($amount, $currency);
-                $result['price'] = $money->getCents();
-                $result['currency'] = $money->getCurrency()->value;
+                $this->logger->info("Extracted price: {$money->getAmount()}");
 
-                $this->logger->info("Extracted price: {$money}");
-                return $result;
+                return $money;
             }
 
             $this->logger->warning("Could not parse price from: $priceText");
 
-            return $result;
+            return null;
 
         } catch (Exception $e) {
             $this->logger->error("Error extracting price: " . $e->getMessage());
 
-            return $result;
+            return null;
         }
     }
 

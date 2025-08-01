@@ -9,6 +9,10 @@ class Money
     private int $cents;
     private Currency $currency;
 
+    /**
+     * @param int $cents
+     * @param Currency $currency
+     */
     public function __construct(int $cents, Currency $currency)
     {
         $this->cents = $cents;
@@ -17,7 +21,7 @@ class Money
 
     /**
      * @param float $amount
-     * @param string $currency
+     * @param Currency $currency
      * @return self
      */
     public static function fromFloat(float $amount, Currency $currency): self
@@ -27,16 +31,25 @@ class Money
         return new self($amountInCents, $currency);
     }
 
+    /**
+     * @return int
+     */
     public function getCents(): int
     {
         return $this->cents;
     }
 
+    /**
+     * @return Currency
+     */
     public function getCurrency(): Currency
     {
         return $this->currency;
     }
 
+    /**
+     * @return float
+     */
     public function getAmount(): float
     {
         return $this->cents / 100;

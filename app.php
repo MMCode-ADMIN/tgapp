@@ -7,8 +7,10 @@ require_once 'src/Service/UrlLoader.php';
 require_once 'src/Parser/HtmlParser.php';
 require_once 'src/Service/Crawler.php';
 require_once 'src/Model/Money.php';
+require_once 'src/Model/Product.php';
 require_once 'src/Enum/Currency.php';
 require_once 'src/Utilities/StringDetection.php';
+require_once 'src/Database/DatabaseManager.php';
 
 
 use WebCrawler\Logger\Logger;
@@ -34,9 +36,6 @@ try {
 
     $crawler = new Crawler($logger, $parser);
     $crawler->crawl($urls);
-
-
-
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
     exit(1);
