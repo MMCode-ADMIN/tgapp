@@ -8,7 +8,7 @@ class Product
 {
     private string $url;
     private ?string $title;
-    private Money $money;
+    private ?Money $money;
     private ?string $availability;
     private DateTimeImmutable $scrapedAt;
 
@@ -96,9 +96,9 @@ class Product
     }
 
     /**
-     * @return Money
+     * @return Money|null
      */
-    public function getMoney(): Money {
+    public function getMoney(): ?Money {
         return $this->money;
     }
 }

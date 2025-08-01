@@ -79,17 +79,20 @@ class Crawler
                     $this->logger->warning("Retrying: $url (attempt " . ($attempt + 2) . ")");
                     sleep(self::RETRY_DELAY);
                     $this->processUrl($url, $attempt + 1);
-
-                    return;
-                } else {
-                    $this->logger->error("Failed to fetch URL after " . (self::MAX_RETRIES + 1) . " attempts: $url");
-
                     return;
                 }
+                throw new Exception("Failed to fetch URL after " . (self::MAX_RETRIES + 1) . " attempts");
             }
 
             $productData = $this->parser->parse($html, $url);
+
+            if (!$productData) {
+                $this->logger->warning("No product found at URL: $url - skipping");
+                return;
+            }
+
             $this->saveProduct($productData);
+
         } catch (Exception $e) {
             $this->logger->error("Error processing URL $url: " . $e->getMessage());
         }

@@ -41,7 +41,13 @@ class HtmlParser
             $money = $this->extractPrice($dom);
             $availability = $this->extractAvailability($dom);
 
+            if (!$title || !$money) {
+                $this->logger->warning("Not a valid product page - missing title or price at URL: $url");
+                return null;
+            }
+
             return new Product($url, $title, $money, $availability);
+
         } catch (Exception $e) {
             $this->logger->error("DOM parsing error for $url: " . $e->getMessage());
             return null;
