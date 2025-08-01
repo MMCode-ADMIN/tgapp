@@ -14,13 +14,5 @@
     "files": [
       "libs/simple_html_dom.php"
     ]
-  },
-  "scripts": {
-    "crawl": "php crawler.php",
-    "setup": [
-      "@composer install",
-      "mkdir -p lib",
-      "wget -q https://raw.githubusercontent.com/simplehtmldom/simplehtmldom/master/simple_html_dom.php -O lib/simple_html_dom.php || curl -s https://raw.githubusercontent.com/simplehtmldom/simplehtmldom/master/simple_html_dom.php -o lib/simple_html_dom.php"
-    ]
   }
 }
