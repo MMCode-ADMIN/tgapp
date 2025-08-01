@@ -35,14 +35,34 @@ class Crawler
      * @return void
      */
     public function crawl(array $urls): void {
-        $this->logger->info("Starting crawl for " . count($urls) . " URLs");
+        try {
+            if (empty($urls)) {
+                $this->logger->warning("No URLs provided for crawling");
 
-        foreach ($urls as $url) {
-            $this->logger->info("Crawling: $url");
-            $this->processUrl($url);
+                return;
+            }
+
+            $this->logger->info("Starting crawl for " . count($urls) . " URLs");
+
+            foreach ($urls as $url) {
+                try {
+                    if (!filter_var($url, FILTER_VALIDATE_URL)) {
+                        $this->logger->error("Invalid URL format: $url");
+                        continue;
+                    }
+
+                    $this->logger->info("Crawling: $url");
+                    $this->processUrl($url);
+                } catch (Exception $e) {
+                    $this->logger->error("Failed processing URL $url: " . $e->getMessage());
+                    continue;
+                }
+            }
+
+            $this->logger->info("Crawling completed");
+        } catch (Exception $e) {
+            $this->logger->error("Critical crawling error: " . $e->getMessage());
         }
-
-        $this->logger->info("Crawling completed");
     }
 
     /**
@@ -80,29 +100,33 @@ class Crawler
      * @return string|null
      */
     private function fetchUrlWithPuppeteer(string $url): ?string {
-        $command = sprintf('node scraper.js %s 2>&1', escapeshellarg($url));
-        $output = shell_exec($command);
+        try {
+            $command = sprintf('node scraper.js %s 2>&1', escapeshellarg($url));
+            $output = shell_exec($command);
 
-        if (!$output) {
-            $this->logger->error("Puppeteer returned no output for $url");
+            if (!$output) {
+                throw new Exception("Puppeteer returned no output");
+            }
+
+            $result = json_decode($output, true);
+
+            if (!$result || !isset($result['success'])) {
+                throw new Exception("Invalid Puppeteer response: $output");
+            }
+
+            if (!$result['success']) {
+                throw new Exception("Puppeteer error: " . ($result['error'] ?? 'Unknown error'));
+            }
+
+            $this->logger->info("Successfully fetched $url with Puppeteer");
+
+            return $result['html'];
+
+        } catch (Exception $e) {
+            $this->logger->error("Puppeteer fetch error for $url: " . $e->getMessage());
+
             return null;
         }
-
-        $result = json_decode($output, true);
-
-        if (!$result || !isset($result['success'])) {
-            $this->logger->error("Invalid Puppeteer response for $url: $output");
-            return null;
-        }
-
-        if (!$result['success']) {
-            $this->logger->error("Puppeteer error for $url: " . ($result['error'] ?? 'Unknown error'));
-            return null;
-        }
-
-        $this->logger->info("Successfully fetched $url with Puppeteer");
-
-        return $result['html'];
     }
 
     /**

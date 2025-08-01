@@ -26,43 +26,33 @@ class HtmlParser
      * @return Product|null
      */
     public function parse(string $html, string $url): ?Product {
+        $dom = null;
+
         try {
             $dom = new simple_html_dom();
             $success = $dom->load($html, true, false);
 
             if (!$success || !$dom) {
                 $this->logger->error("Failed to load DOM for $url");
-
                 return null;
             }
 
             $title = $this->extractTitle($dom);
-
-            if (!$title) {
-                $this->logger->warning("Missing product title for $url");
-            }
-
             $money = $this->extractPrice($dom);
-
-            if (!$money) {
-                $this->logger->warning("Missing product price for $url");
-
-                return null;
-            }
-
             $availability = $this->extractAvailability($dom);
-
-            if (!$availability) {
-                $this->logger->warning("Missing product availability for $url");
-            }
-
-            $dom->clear();
 
             return new Product($url, $title, $money, $availability);
         } catch (Exception $e) {
             $this->logger->error("DOM parsing error for $url: " . $e->getMessage());
-
             return null;
+        } finally {
+            if ($dom) {
+                try {
+                    $dom->clear();
+                } catch (Exception $e) {
+                    $this->logger->error("Failed to clear DOM: " . $e->getMessage());
+                }
+            }
         }
     }
 
@@ -71,15 +61,24 @@ class HtmlParser
      * @return string|null
      */
     private function extractTitle($dom): ?string {
-        $titleElement = $dom->find('.product-title', 0);
+        try {
+            $titleElement = $dom->find('.product-title', 0);
+            if (!$titleElement) {
+                $this->logger->warning('Title element not found');
 
-        if ($titleElement) {
-            $this->logger->info('Title: ' . $titleElement->plaintext);
+                return null;
+            }
 
-            return trim($titleElement->plaintext);
+            $title = trim($titleElement->plaintext);
+            $this->logger->info('Title: ' . $title);
+
+            return $title;
+
+        } catch (Exception $e) {
+            $this->logger->error("Error extracting title: " . $e->getMessage());
+
+            return null;
         }
-
-        return null;
     }
 
     /**
@@ -89,30 +88,37 @@ class HtmlParser
     private function extractPrice($dom): ?Money {
         try {
             $priceElement = $dom->find('.product-price .price span', 0);
-
             if (!$priceElement) {
                 $this->logger->warning('Price element not found');
+
+                return null;
             }
 
-            $priceText = trim(html_entity_decode($priceElement->plaintext));
+            try {
+                $priceText = trim(html_entity_decode($priceElement->plaintext));
+                $currency = StringDetection::detectCurrency($priceText);
+                $priceText = str_replace(['.', ','], ['', '.'], $priceText);
 
-            $currency = StringDetection::detectCurrency($priceText);
-            $priceText = str_replace(['.', ','], ['', '.'], $priceText);
+                if (!preg_match('/(\d+\.?\d*)/', $priceText, $matches)) {
+                    $this->logger->warning("Could not parse price from: $priceText");
 
-            if (preg_match('/(\d+\.?\d*)/', $priceText, $matches)) {
+                    return null;
+                }
+
                 $amount = floatval($matches[1]);
                 $money = Money::fromFloat($amount, $currency);
                 $this->logger->info("Extracted price: {$money->getAmount()}");
 
                 return $money;
+
+            } catch (Exception $e) {
+                $this->logger->error("Error processing price text: " . $e->getMessage());
+
+                return null;
             }
 
-            $this->logger->warning("Could not parse price from: $priceText");
-
-            return null;
-
         } catch (Exception $e) {
-            $this->logger->error("Error extracting price: " . $e->getMessage());
+            $this->logger->error("Error extracting price element: " . $e->getMessage());
 
             return null;
         }
@@ -123,17 +129,24 @@ class HtmlParser
      * @return string|null
      */
     private function extractAvailability($dom): ?string {
+        try {
+            $element = $dom->find('.pdp-stock__line', 0);
+            if (!$element) {
+                $this->logger->warning('Availability element not found');
+                return null;
+            }
 
-        $element = $dom->find('.pdp-stock__line', 0);
-
-        if ($element) {
             $text = trim($element->plaintext);
-            $this->logger->info("Availability: {$this->normalizeAvailability($text)}");
+            $normalized = $this->normalizeAvailability($text);
+            $this->logger->info("Availability: {$normalized}");
 
-            return $this->normalizeAvailability($text);
+            return $normalized;
+
+        } catch (Exception $e) {
+            $this->logger->error("Error extracting availability: " . $e->getMessage());
+
+            return null;
         }
-
-        return null;
     }
 
     /**

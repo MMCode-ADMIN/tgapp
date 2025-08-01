@@ -11,8 +11,14 @@ class Product
     private Money $money;
     private ?string $availability;
     private DateTimeImmutable $scrapedAt;
-    
-    public function __construct(string $url, ?string $title, Money $money, ?string $availability)
+
+    /**
+     * @param string $url
+     * @param string|null $title
+     * @param Money|null $money
+     * @param string|null $availability
+     */
+    public function __construct(string $url, ?string $title, ?Money $money, ?string $availability)
     {
         $this->url = $url;
         $this->title = $title;
@@ -94,17 +100,5 @@ class Product
      */
     public function getMoney(): Money {
         return $this->money;
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'url' => $this->url,
-            'title' => $this->title,
-            'price' => $this->money->getCents(),
-            'currency' => $this->money->getCurrency()->value,
-            'availability' => $this->availability,
-            'scraped_at' => $this->scrapedAt->format('Y-m-d H:i:s')
-        ];
     }
 }
